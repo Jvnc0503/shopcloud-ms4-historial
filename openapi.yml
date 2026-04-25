@@ -1,0 +1,255 @@
+openapi: 3.0.3
+info:
+  title: ShopCloud - MS4 Historial
+  version: 1.0.0
+  description: API de consolidación de historial de usuario, pedidos y productos para ShopCloud.
+servers:
+  - url: http://localhost:8004
+paths:
+  /:
+    get:
+      summary: Health check
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Servicio disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /historial/{usuario_id}:
+    get:
+      summary: Obtener historial consolidado de usuario
+      operationId: obtenerHistorial
+      parameters:
+        - name: usuario_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Historial consolidado obtenido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistorialResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Error de integración con servicios upstream
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /historial/resumen/{usuario_id}:
+    get:
+      summary: Obtener resumen de compras de usuario
+      operationId: obtenerResumenHistorial
+      parameters:
+        - name: usuario_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Resumen de historial obtenido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumenHistorialResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Error de integración con servicios upstream
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: ms4-historial
+      required:
+        - status
+        - service
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+          example: Usuario no encontrado
+      required:
+        - detail
+    UsuarioResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          nullable: true
+          example: 661bfe2f8f5b6d8f888a1234
+        nombre:
+          type: string
+          example: Carlos
+        apellido:
+          type: string
+          example: Garcia
+        pais:
+          type: string
+          nullable: true
+          example: Perú
+      required:
+        - nombre
+        - apellido
+    CategoriaResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: Perifericos
+      required:
+        - id
+        - nombre
+    ProductoResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 123
+        nombre:
+          type: string
+          minLength: 2
+          maxLength: 150
+          example: Teclado mecanico
+        precio:
+          type: number
+          format: float
+          exclusiveMinimum: 0
+          example: 129.99
+        stock:
+          type: integer
+          minimum: 0
+          example: 15
+        categoria_id:
+          type: integer
+          example: 1
+        creado_en:
+          type: string
+          format: date-time
+          example: '2026-04-24T12:34:56.789000'
+      required:
+        - id
+        - nombre
+        - precio
+        - stock
+        - categoria_id
+        - creado_en
+    DetallePedidoResponse:
+      type: object
+      properties:
+        producto_id:
+          type: integer
+          example: 123
+        cantidad:
+          type: integer
+          minimum: 1
+          example: 2
+        precio_unitario:
+          type: number
+          format: float
+          minimum: 0
+          example: 129.99
+        producto:
+          allOf:
+            - $ref: '#/components/schemas/ProductoResponse'
+          nullable: true
+      required:
+        - producto_id
+        - cantidad
+        - precio_unitario
+    PedidoResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 501
+        usuario_id:
+          oneOf:
+            - type: integer
+            - type: string
+          example: 42
+        total:
+          type: number
+          format: float
+          minimum: 0
+          example: 259.98
+        estado:
+          type: string
+          nullable: true
+          example: enviado
+        creado_en:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-04-25T10:30:00.000000'
+        detalle:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetallePedidoResponse'
+      required:
+        - id
+        - usuario_id
+        - total
+        - detalle
+    HistorialResponse:
+      type: object
+      properties:
+        usuario:
+          $ref: '#/components/schemas/UsuarioResponse'
+        pedidos:
+          type: array
+          items:
+            $ref: '#/components/schemas/PedidoResponse'
+      required:
+        - usuario
+        - pedidos
+    ResumenHistorialResponse:
+      type: object
+      properties:
+        usuario_id:
+          type: string
+          example: 42
+        nro_pedidos:
+          type: integer
+          minimum: 0
+          example: 3
+        total_gastado:
+          type: number
+          format: float
+          minimum: 0
+          example: 589.47
+      required:
+        - usuario_id
+        - nro_pedidos
+        - total_gastado
