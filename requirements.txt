@@ -1,0 +1,18 @@
+# ==========================================
+# Framework Web y Servidor
+# ==========================================
+fastapi==0.110.0          # Framework principal para construir la API
+uvicorn>=0.29.0           # Servidor ASGI para ejecutar FastAPI en producción
+
+# ==========================================
+# Validación y Configuración
+# ==========================================
+pydantic>=2.7.0           # Validación de datos y serialización (usado nativamente por FastAPI)
+pydantic-settings==2.2.1  # Para cargar variables de entorno desde el archivo .env de forma segura
+
+# ==========================================
+# Herramientas de Desarrollo / Scripts
+# ==========================================
+cachetools>=5.3.0         # Utilidades de caching en memoria (LRU, TTL, etc.)
+pytest>=8.3.0             # Suite de pruebas automatizadas
+httpx==0.28.1             # Cliente HTTP moderno para pruebas ASGI explícitas
