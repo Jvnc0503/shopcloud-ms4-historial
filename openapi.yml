@@ -5,6 +5,12 @@ info:
   description: API de consolidación de historial de usuario, pedidos y productos para ShopCloud.
 servers:
   - url: http://localhost:8004
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 paths:
   /:
     get:
@@ -21,6 +27,8 @@ paths:
     get:
       summary: Obtener historial consolidado de usuario
       operationId: obtenerHistorial
+      security:
+        - bearerAuth: []
       parameters:
         - name: usuario_id
           in: path
@@ -34,6 +42,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HistorialResponse'
+        '401':
+          description: Falta el token de autorización
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Usuario no encontrado
           content:
@@ -50,6 +64,8 @@ paths:
     get:
       summary: Obtener resumen de compras de usuario
       operationId: obtenerResumenHistorial
+      security:
+        - bearerAuth: []
       parameters:
         - name: usuario_id
           in: path
@@ -63,6 +79,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResumenHistorialResponse'
+        '401':
+          description: Falta el token de autorización
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Usuario no encontrado
           content:

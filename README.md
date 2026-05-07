@@ -2,6 +2,8 @@
 
 MS4 Historial is a FastAPI service that consolidates user history across the ShopCloud microservices. It exposes a health check plus endpoints to retrieve a full purchase history or a purchase summary for a given user.
 
+The historial endpoints require an `Authorization: Bearer <token>` header. MS4 forwards that token to the upstream MS2 and MS3 services while resolving the consolidated response.
+
 ## Features
 
 - Health check endpoint at `/`
@@ -75,7 +77,7 @@ Returns the user data, their orders, and product details for each order item. Th
 Example:
 
 ```bash
-curl http://localhost:8004/historial/u-1
+curl -H "Authorization: Bearer <your-token>" http://localhost:8004/historial/u-1
 ```
 
 ### Get historial summary
@@ -87,7 +89,7 @@ Returns the number of orders and the total amount spent by the user.
 Example:
 
 ```bash
-curl http://localhost:8004/historial/resumen/u-1
+curl -H "Authorization: Bearer <your-token>" http://localhost:8004/historial/resumen/u-1
 ```
 
 ## Error Handling

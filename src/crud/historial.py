@@ -97,9 +97,10 @@ async def _safe_get_json(
     url: str,
     *,
     params: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
 ) -> tuple[int, Any]:
     try:
-        response = await client.get(url, params=params, timeout=settings.REQUEST_TIMEOUT_SECONDS)
+        response = await client.get(url, params=params, headers=headers, timeout=settings.REQUEST_TIMEOUT_SECONDS)
     except httpx.RequestError as exc:
         raise HTTPException(
             status_code=502,
@@ -117,9 +118,13 @@ async def _safe_get_json(
     return response.status_code, payload
 
 
-async def _get_usuario(client: httpx.AsyncClient, usuario_id: str) -> UsuarioResponse:
+async def _get_usuario(
+    client: httpx.AsyncClient,
+    usuario_id: str,
+    headers: dict[str, str] | None,
+) -> UsuarioResponse:
     url = f"{settings.MS3_URL.rstrip('/')}/usuarios/{usuario_id}"
-    status_code, payload = await _safe_get_json(client, url)
+    status_code, payload = await _safe_get_json(client, url, headers=headers)
 
     if status_code == 404:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
@@ -129,9 +134,13 @@ async def _get_usuario(client: httpx.AsyncClient, usuario_id: str) -> UsuarioRes
     return UsuarioResponse.model_validate(_extract_usuario(payload))
 
 
-async def _get_pedidos(client: httpx.AsyncClient, usuario_id: str) -> list[dict[str, Any]]:
+async def _get_pedidos(
+    client: httpx.AsyncClient,
+    usuario_id: str,
+    headers: dict[str, str] | None,
+) -> list[dict[str, Any]]:
     url = f"{settings.MS2_URL.rstrip('/')}/pedidos"
-    status_code, payload = await _safe_get_json(client, url, params={"usuario_id": usuario_id})
+    status_code, payload = await _safe_get_json(client, url, params={"usuario_id": usuario_id}, headers=headers)
 
     if status_code == 404:
         return []
@@ -141,7 +150,11 @@ async def _get_pedidos(client: httpx.AsyncClient, usuario_id: str) -> list[dict[
     return _extract_pedidos(payload)
 
 
-async def _get_detalle_for_pedido(client: httpx.AsyncClient, pedido_data: dict[str, Any]) -> list[dict[str, Any]]:
+async def _get_detalle_for_pedido(
+    client: httpx.AsyncClient,
+    pedido_data: dict[str, Any],
+    headers: dict[str, str] | None,
+) -> list[dict[str, Any]]:
     detalle = _extract_detalle(pedido_data)
     if detalle:
         return detalle
@@ -151,7 +164,7 @@ async def _get_detalle_for_pedido(client: httpx.AsyncClient, pedido_data: dict[s
         return []
 
     url = f"{settings.MS2_URL.rstrip('/')}/pedidos/{pedido_id}"
-    status_code, payload = await _safe_get_json(client, url)
+    status_code, payload = await _safe_get_json(client, url, headers=headers)
 
     if status_code == 404:
         return []
@@ -166,12 +179,13 @@ async def _get_producto(
     client: httpx.AsyncClient,
     producto_id: int,
     cache: dict[int, ProductoResponse | None],
+    headers: dict[str, str] | None,
 ) -> ProductoResponse | None:
     if producto_id in cache:
         return cache[producto_id]
 
     url = f"{settings.MS1_URL.rstrip('/')}/productos/{producto_id}"
-    status_code, payload = await _safe_get_json(client, url)
+    status_code, payload = await _safe_get_json(client, url, headers=headers)
 
     if status_code == 404:
         cache[producto_id] = None
@@ -184,16 +198,18 @@ async def _get_producto(
     return producto
 
 
-async def get_historial(usuario_id: str) -> HistorialResponse:
+async def get_historial(usuario_id: str, authorization: str) -> HistorialResponse:
+    headers = {"Authorization": authorization}
+
     async with httpx.AsyncClient() as client:
-        usuario = await _get_usuario(client, usuario_id)
-        pedidos_raw = await _get_pedidos(client, usuario_id)
+        usuario = await _get_usuario(client, usuario_id, headers)
+        pedidos_raw = await _get_pedidos(client, usuario_id, headers)
 
         producto_cache: dict[int, ProductoResponse | None] = {}
         pedidos_normalizados: list[PedidoResponse] = []
 
         for pedido_data in pedidos_raw:
-            detalle = await _get_detalle_for_pedido(client, pedido_data)
+            detalle = await _get_detalle_for_pedido(client, pedido_data, headers)
             detalle_enriquecido: list[dict[str, Any]] = []
 
             for item in detalle:
@@ -201,7 +217,7 @@ async def get_historial(usuario_id: str) -> HistorialResponse:
                 producto_id = item_enriquecido.get("producto_id")
 
                 if type(producto_id) is int:
-                    producto = await _get_producto(client, producto_id, producto_cache)
+                    producto = await _get_producto(client, producto_id, producto_cache, headers)
                     item_enriquecido["producto"] = producto.model_dump(mode="json") if producto else None
                 else:
                     item_enriquecido["producto"] = None
@@ -217,10 +233,12 @@ async def get_historial(usuario_id: str) -> HistorialResponse:
         return HistorialResponse(usuario=usuario, pedidos=pedidos_normalizados)
 
 
-async def get_resumen(usuario_id: str) -> ResumenHistorialResponse:
+async def get_resumen(usuario_id: str, authorization: str) -> ResumenHistorialResponse:
+    headers = {"Authorization": authorization}
+
     async with httpx.AsyncClient() as client:
-        await _get_usuario(client, usuario_id)
-        pedidos = await _get_pedidos(client, usuario_id)
+        await _get_usuario(client, usuario_id, headers)
+        pedidos = await _get_pedidos(client, usuario_id, headers)
 
     total_gastado = 0.0
     for pedido in pedidos:

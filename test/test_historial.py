@@ -3,6 +3,9 @@ from __future__ import annotations
 from src.crud import historial as historial_service
 
 
+AUTH_HEADER = {"Authorization": "Bearer test-token"}
+
+
 def test_health_check(client):
     response = client.get("/")
     assert response.status_code == 200
@@ -10,7 +13,9 @@ def test_health_check(client):
 
 
 def test_historial_endpoint_consolidates_upstream_data(client, monkeypatch):
-    async def fake_safe_get_json(_client, url: str, *, params=None):
+    async def fake_safe_get_json(_client, url: str, *, params=None, headers=None):
+        assert headers == AUTH_HEADER
+
         if url.endswith("/usuarios/u-1"):
             return 200, {
                 "status": "success",
@@ -80,7 +85,7 @@ def test_historial_endpoint_consolidates_upstream_data(client, monkeypatch):
 
     monkeypatch.setattr(historial_service, "_safe_get_json", fake_safe_get_json)
 
-    response = client.get("/historial/u-1")
+    response = client.get("/historial/u-1", headers=AUTH_HEADER)
     assert response.status_code == 200
 
     payload = response.json()
@@ -92,7 +97,9 @@ def test_historial_endpoint_consolidates_upstream_data(client, monkeypatch):
 
 
 def test_historial_endpoint_returns_502_for_malformed_usuario_payload(client, monkeypatch):
-    async def fake_safe_get_json(_client, url: str, *, params=None):
+    async def fake_safe_get_json(_client, url: str, *, params=None, headers=None):
+        assert headers == AUTH_HEADER
+
         if url.endswith("/usuarios/bad"):
             return 200, {"data": ["invalid", "payload"]}
 
@@ -100,13 +107,15 @@ def test_historial_endpoint_returns_502_for_malformed_usuario_payload(client, mo
 
     monkeypatch.setattr(historial_service, "_safe_get_json", fake_safe_get_json)
 
-    response = client.get("/historial/bad")
+    response = client.get("/historial/bad", headers=AUTH_HEADER)
     assert response.status_code == 502
     assert response.json()["detail"] == "MS3 devolvió un formato inesperado de usuario"
 
 
 def test_historial_summary_calculates_totals(client, monkeypatch):
-    async def fake_safe_get_json(_client, url: str, *, params=None):
+    async def fake_safe_get_json(_client, url: str, *, params=None, headers=None):
+        assert headers == AUTH_HEADER
+
         if url.endswith("/usuarios/u-2"):
             return 200, {"data": {"nombre": "Juan", "apellido": "Perez", "pais": "Perú"}}
 
@@ -118,7 +127,7 @@ def test_historial_summary_calculates_totals(client, monkeypatch):
 
     monkeypatch.setattr(historial_service, "_safe_get_json", fake_safe_get_json)
 
-    response = client.get("/historial/resumen/u-2")
+    response = client.get("/historial/resumen/u-2", headers=AUTH_HEADER)
     assert response.status_code == 200
     assert response.json() == {
         "usuario_id": "u-2",
@@ -147,13 +156,15 @@ def test_extract_helpers_support_wrapped_payloads():
 
 
 def test_historial_returns_404_when_user_is_missing(client, monkeypatch):
-    async def fake_safe_get_json(_client, url: str, *, params=None):
+    async def fake_safe_get_json(_client, url: str, *, params=None, headers=None):
+        assert headers == AUTH_HEADER
+
         if url.endswith("/usuarios/missing"):
             return 404, {"detail": "not found"}
         raise AssertionError(f"URL no esperada: {url}")
 
     monkeypatch.setattr(historial_service, "_safe_get_json", fake_safe_get_json)
 
-    response = client.get("/historial/missing")
+    response = client.get("/historial/missing", headers=AUTH_HEADER)
     assert response.status_code == 404
     assert response.json()["detail"] == "Usuario no encontrado"
