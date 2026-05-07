@@ -29,8 +29,8 @@ def test_historial_endpoint_consolidates_upstream_data(client, monkeypatch):
                 },
             }
 
-        if url.endswith("/pedidos"):
-            assert params == {"usuario_id": "u-1"}
+        if url.endswith("/pedidos/usuario/u-1"):
+            assert params is None
             return 200, {
                 "data": {
                     "pedidos": [
@@ -119,8 +119,8 @@ def test_historial_summary_calculates_totals(client, monkeypatch):
         if url.endswith("/usuarios/u-2"):
             return 200, {"data": {"nombre": "Juan", "apellido": "Perez", "pais": "Perú"}}
 
-        if url.endswith("/pedidos"):
-            assert params == {"usuario_id": "u-2"}
+        if url.endswith("/pedidos/usuario/u-2"):
+            assert params is None
             return 200, {"data": [{"id": 1, "total": 100.5}, {"id": 2, "total": "49.5"}, {"id": 3, "total": "invalid"}]}
 
         raise AssertionError(f"URL no esperada: {url}")
